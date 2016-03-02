@@ -11,12 +11,6 @@ var ModelSchema = new Schema({
 	avatar: String
 });
 
-// ModelSchema
-// 	.path('username')
-// 	.validate(function(name) {
-// 		return name && name.length > 0;
-// 	}, 'Username cannot be blank');
-
 ModelSchema
 	.path('details')
 	.validate(function(bio) {

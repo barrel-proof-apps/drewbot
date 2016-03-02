@@ -6,22 +6,6 @@ var dotenv = require("dotenv"),
 dotenv.config();
 var token = process.env.SLACK_API_TOKEN || '';
 
-function setupSlackNode() {
-	console.log(token)
-
-	var rtm = new RtmClient(token, {
-		logLevel: 'debug'
-	});
-	rtm.start();
-
-
-	var RTM_EVENTS = require('@slack/client').RTM_EVENTS;
-	console.log("setting up listen")
-	rtm.on(RTM_EVENTS.MESSAGE, function(message) {
-		console.log("recieved message " + JSON.stringify(message))
-	});
-	console.log('listening')
-}
 function wrapApi(f, options) {
 	return new Promise(function(resolve, recject){
 		f.call(null, options, function(err, payload){
@@ -45,18 +29,23 @@ function setupBotkit() {
 		}
 	});
 	var Bio = require('./models/bio.model');
-	var bioUsage = `Please use the following notation "bio <target>" where target is me, all, or a username.  ex:
-	bio me
-	bio all
-	bio @az`;
+	var usage = {
+		bio: "\"bio <target>\" where target is me, all, or a @username.  ex:\n\tbio me\n\tbio all\n\tbio @az",
+		setbio: "\"setbio <bio>\" where bio is your company details  ex:\n\tsetbio Barrel Proof apps is a A craft consulting agency specializing in mobile, web, cloud, and IoT solutions.'",
+	}
+	var bioUsage = "Please use the following notation " + usage.bio;
+
+	controller.hears(["usage"], ["direct_mention", "mention", "direct_message"], function(bot, message) {
+		console.log("You said "+JSON.stringify(message))
+		_.each(_.values(usage), function(cmd){
+			bot.reply(message, cmd);
+		})
+	})
 
 	controller.hears(["^bio"], ["direct_message", "direct_mention", "mention", "ambient"], function(bot, message) {
-		console.log(JSON.stringify(message))
 		try {
 			var name = message.text.split(" ")[1];
-			console.log("success name is "+name)
 		} catch(e) {
-			console.log("error")
 			console.log(e);
 			bot.reply(message, bioUsage);
 			return;
@@ -69,7 +58,7 @@ function setupBotkit() {
 				userid: message.user
 			}).then(function(bio){
 				if (!bio) {
-					bot.reply(message, 'Your bio is empty, use "setbio <details>" to set.  ex: \nsetbio Barrel Proof apps is a A craft consulting agency specializing in mobile, web, cloud, and IoT solutions.');
+					bot.reply(message, 'Your bio is empty, use ' +usage.setbio);
 				} else {
 					bot.reply(message, bio.details);
 				}
@@ -85,18 +74,23 @@ function setupBotkit() {
 				console.log(e)
 			})
 		} else {
-			var userid = name.replace(/[<>@]*/g, "")
-			Bio.findOne({
-				userid: userid
-			}).then(function(bio){
-				if (!bio) {
-					bot.reply(message, `The bio is empty, tell <@${userid}> to "setbio <details>" to set.  ex: \nsetbio Barrel Proof apps is a A craft consulting agency specializing in mobile, web, cloud, and IoT solutions.`);
-				} else {
-					bot.reply(message, bio.details);
-				}
-			}).catch(function(e){
-				console.log(e)
-			})
+			if (name.indexOf("<@") == -1 ) {
+				bot.reply(message, bioUsage);
+			} else {
+				var userid = name.replace(/[<>@]*/g, "")
+				Bio.findOne({
+					userid: userid
+				}).then(function(bio){
+					if (!bio) {
+						bot.reply(message, `The bio is empty, tell <@${userid}> to use ${usage.setbio}`);
+					} else {
+						bot.reply(message, bio.details);
+					}
+				}).catch(function(e){
+					bot.reply(message, bioUsage);
+					console.log(e)
+				})
+			}
 		}
 	});
 	controller.hears(["^setbio"], ["direct_message", "direct_mention", "mention", "ambient"], function(bot, message) {
@@ -109,23 +103,25 @@ function setupBotkit() {
 				userid: message.user
 			})
 		}).then(function(bio){
+			var details = message.text.replace(/setbio */, "");
+			console.log(JSON.stringify(details))
 			if (!bio) {
 				return new Bio({
 					userid: message.user,
 					username: user.name,
 					email: user.profile.email,
 					avatar: user.profile.image_original,
-					details: message.text.replace("setbio ", "")
+					details: details
 				}).save();
 			} else {
-				bio.details = message.text.replace("setbio ", "");
+				bio.details = details;
 				return bio.save();
 			}
 		}).then(function(bio){
-			console.log("saved")
 			bot.reply(message, `bio saved`);
 		}).catch(function(e){
 			console.log(e)
+			bot.reply(message, "invalid usage, please use "+usage.setbio)
 		})
 	});
 }
