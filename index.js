@@ -36,19 +36,26 @@ function setupBotkit() {
 	var bioUsage = "Please use the following notation " + usage.bio;
 
 	controller.hears(["usage"], ["direct_mention", "mention", "direct_message"], function(bot, message) {
-		console.log("You said "+JSON.stringify(message))
 		_.each(_.values(usage), function(cmd){
 			bot.reply(message, cmd);
 		})
 	})
-
+	function renderBio(bio) {
+		var fullName = `${bio.firstName|| ""} ${bio.lastName ||""}`;
+		var title = bio.title ||"";
+		var result = `<@${bio.userid}> ${fullName!=" " ? fullName : ""}${bio.title !="" ? ", "+ bio.title : ""}`
+		var skype = bio.skype ||"", phone = bio.phone ||"";
+		if (skype != "" || phone != "")
+			result = result + `\n\t${bio.skype && bio.skype!="" ? "skype: " +bio.skype + " | " : ""}${bio.phone && bio.phone!="" ? "tel:"+bio.phone : ""}`;
+		result= result + `\n\t${bio.details}`;
+		return result;
+	}
 	controller.hears(["^bio"], ["direct_message", "direct_mention", "mention", "ambient"], function(bot, message) {
 		try {
 			var name = message.text.split(" ")[1];
 		} catch(e) {
 			console.log(e);
-			bot.reply(message, bioUsage);
-			return;
+			return bot.reply(message, bioUsage);
 		}
 
 		if (!name) {
@@ -60,18 +67,20 @@ function setupBotkit() {
 				if (!bio) {
 					bot.reply(message, 'Your bio is empty, use ' +usage.setbio);
 				} else {
-					bot.reply(message, bio.details);
+					bot.reply(message, renderBio(bio));
 				}
 			}).catch(function(e){
 				console.log(e)
+				bot.reply(message, bioUsage);
 			})
 		} else if (name == "all") {
 			Bio.find().then(function(bios){
 				_.each(bios, function(bio){
-					bot.reply(message, `<@${bio.userid}> ${bio.details}`);
+					bot.reply(message, renderBio(bio));
 				})
 			}).catch(function(e){
 				console.log(e)
+				bot.reply(message, bioUsage);
 			})
 		} else {
 			if (name.indexOf("<@") == -1 ) {
@@ -94,27 +103,33 @@ function setupBotkit() {
 		}
 	});
 	controller.hears(["^setbio"], ["direct_message", "direct_mention", "mention", "ambient"], function(bot, message) {
-		var user = null;
+		var userParams = null;
 		wrapApi(bot.api.users.info, {
 			user: message.user
 		}).then(function(payload) {
-			user = _.pick(payload.user, "name", "profile");
+			var user = payload.user;
+			userParams = {
+				userid: message.user,
+				username: user.name,
+				email: user.profile.email,
+				avatar: user.profile.image_original,
+				phone: user.profile.phone,
+				firstName: user.profile.first_name,
+				lastName: user.profile.last_name,
+				title: user.profile.title,
+				skype: user.profile.skype,
+				details: message.text.replace(/setbio */i, "")
+			};
 			return Bio.findOne({
 				userid: message.user
 			})
 		}).then(function(bio){
-			var details = message.text.replace(/setbio */, "");
-			console.log(JSON.stringify(details))
 			if (!bio) {
-				return new Bio({
-					userid: message.user,
-					username: user.name,
-					email: user.profile.email,
-					avatar: user.profile.image_original,
-					details: details
-				}).save();
+				return new Bio(userParams).save();
 			} else {
-				bio.details = details;
+				_.each(_.keys(userParams), function(key){
+					bio[key] = userParams[key];
+				})
 				return bio.save();
 			}
 		}).then(function(bio){

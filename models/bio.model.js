@@ -8,7 +8,12 @@ var ModelSchema = new Schema({
 	username: String,
 	email: String,
 	details: String,
-	avatar: String
+	avatar: String,
+	firstName:String,
+	lastName: String,
+	title: String,
+	phone:String,
+	skype:String
 });
 
 ModelSchema
