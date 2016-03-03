@@ -44,9 +44,9 @@ function setupBotkit() {
 		var fullName = `${bio.firstName|| ""} ${bio.lastName ||""}`;
 		var title = bio.title ||"";
 		var result = `<@${bio.userid}> ${fullName!=" " ? fullName : ""}${bio.title !="" ? ", "+ bio.title : ""}`
-		var skype = bio.skype ||"", phone = bio.phone ||"";
+		var skype = bio.skype ||"", phone = bio.phone ||"", email = bio.email || "";
 		if (skype != "" || phone != "")
-			result = result + `\n\t${bio.skype && bio.skype!="" ? "skype: " +bio.skype + " | " : ""}${bio.phone && bio.phone!="" ? "tel:"+bio.phone : ""}`;
+			result = result + `\n\t${email!="" ? "email: " +email + " | " : ""}${skype!="" ? "skype: " +skype + " | " : ""}${phone!="" ? "tel:"+phone : ""}`;
 		result= result + `\n\t${bio.details}`;
 		return result;
 	}
