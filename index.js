@@ -32,6 +32,7 @@ function setupBotkit() {
 	var usage = {
 		bio: "\"bio <target>\" where target is me, all, or a @username.  ex:\n\tbio me\n\tbio all\n\tbio @az",
 		setbio: "\"setbio <bio>\" where bio is your company details  ex:\n\tsetbio Barrel Proof apps is a A craft consulting agency specializing in mobile, web, cloud, and IoT solutions.'",
+		unsetbio: "\"unsetbio\" will remove your bio from being visible to others.  ex:\n\tunsetbio",
 	}
 	var bioUsage = "Please use the following notation " + usage.bio;
 
@@ -137,6 +138,22 @@ function setupBotkit() {
 		}).catch(function(e){
 			console.log(e)
 			bot.reply(message, "invalid usage, please use "+usage.setbio)
+		})
+	});
+	controller.hears(["^unsetbio"], ["direct_message", "direct_mention", "mention", "ambient"], function(bot, message) {
+		Bio.findOne({
+			userid: message.user
+		}).then(function(bio){
+			if (!bio) {
+				bot.reply(message, "bio not found");
+			} else {
+				return bio.remove();
+			}
+		}).then(function() {
+			bot.reply(message, "bio removed");
+		}).catch(function(e){
+			console.log(e)
+			bot.reply(message, "error occurred ")
 		})
 	});
 }
