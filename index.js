@@ -94,7 +94,7 @@ function setupBotkit() {
 					if (!bio) {
 						bot.reply(message, `The bio is empty, tell <@${userid}> to use ${usage.setbio}`);
 					} else {
-						bot.reply(message, bio.details);
+						bot.reply(message, renderBio(bio));
 					}
 				}).catch(function(e){
 					bot.reply(message, bioUsage);
